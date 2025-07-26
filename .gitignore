@@ -8,6 +8,12 @@
 *.key
 config.local.json
 
+# Setup and Development Scripts (local only)
+github-setup.sh
+github-setup.bat
+setup-local.sh
+setup-local.bat
+
 # Python
 __pycache__/
 *.py[cod]
