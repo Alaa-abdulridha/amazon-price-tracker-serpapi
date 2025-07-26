@@ -1,0 +1,208 @@
+# Amazon Price Tracker - Git Ignore File
+# Author: Alaa Abdulridha for SerpApi, LLC
+
+# Environment and Configuration
+.env
+.env.local
+.env.production
+*.key
+config.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask
+instance/
+.webassets-cache
+
+# Scrapy
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Application Specific
+logs/
+data/
+temp/
+tmp/
+*.db
+*.sqlite
+*.sqlite3
+amazontracker.db
+backup/
+exports/
+
+# Machine Learning Models
+models/
+*.pkl
+*.joblib
+*.h5
+*.model
+
+# Static Files (generated)
+static/generated/
+media/uploads/
+
+# IDE and Editor files
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+
+# Temporary files
+*.tmp
+*.temp
+
+# Windows
+*.exe
+*.msi
+*.cab
+*.dmp
+*.pid
+*.lnk
+
+# macOS
+*.dmg
+*.pkg
+
+# Linux
+*.AppImage
+*.deb
+*.rpm
+
+# Documentation builds
+docs/build/
+site/
