@@ -239,8 +239,7 @@ amazon-price-tracker/
 │   └── database/          # Data models
 ├── tests/                 # Comprehensive test suite
 ├── templates/             # HTML templates
-├── static/                # CSS/JS assets
-└── docs/                  # Documentation
+└── static/                # CSS/JS assets
 ```
 
 ## 🔧 Development
@@ -323,8 +322,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - 📧 **Email:** alaa@serpapi.com
-- 📚 **Documentation:** [Full Documentation](docs/)
-- 🐛 **Issues:** [GitHub Issues](https://github.com/Alaa-abdulridha/amazon-price-tracker-serpapi/issues)
+-  **Issues:** [GitHub Issues](https://github.com/Alaa-abdulridha/amazon-price-tracker-serpapi/issues)
 - 💬 **Discussions:** [GitHub Discussions](https://github.com/Alaa-abdulridha/amazon-price-tracker-serpapi/discussions)
 
 ---
@@ -813,8 +811,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - 📧 **Email:** alaa@serpapi.com
-- 📚 **Documentation:** [Full Documentation](docs/)
-- 🐛 **Issues:** [GitHub Issues](https://github.com/Alaa-abdulridha/amazon-price-tracker-serpapi/issues)
+-  **Issues:** [GitHub Issues](https://github.com/Alaa-abdulridha/amazon-price-tracker-serpapi/issues)
 - 💬 **Discussions:** [GitHub Discussions](https://github.com/Alaa-abdulridha/amazon-price-tracker-serpapi/discussions)
 
 ---
