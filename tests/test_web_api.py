@@ -21,20 +21,43 @@ class TestWebApplicationEndpoints:
     def test_dashboard_endpoint(self):
         """Test main dashboard endpoint"""
         with patch('amazontracker.web.app.tracker') as mock_tracker:
-            with patch('amazontracker.web.app.templates') as mock_templates:
-                mock_tracker.get_products.return_value = [
-                    Mock(is_active=True, name="iPhone 15"),
-                    Mock(is_active=False, name="Old Product")
-                ]
-                mock_tracker.get_current_deals.return_value = []
-                
-                mock_templates.TemplateResponse.return_value = Mock()
-                
-                response = self.client.get("/")
-                
-                assert response.status_code == 200
-                mock_tracker.get_products.assert_called_once()
-                mock_tracker.get_current_deals.assert_called_once()
+            mgr_patch = patch('amazontracker.web.app.notification_manager')
+            with mgr_patch as mock_nm:
+                tpl_patch = patch('amazontracker.web.app.templates')
+                with tpl_patch as mock_tpl:
+                    # Mock tracker methods with simple data
+                    product1 = Mock()
+                    product1.is_active = True
+                    product1.name = "iPhone 15"
+                    product1.id = "1"
+                    
+                    product2 = Mock()
+                    product2.is_active = False
+                    product2.name = "Old Product"
+                    product2.id = "2"
+                    
+                    products = [product1, product2]
+                    mock_tracker.get_products.return_value = products
+                    mock_tracker.get_current_deals.return_value = []
+                    
+                    # Mock notification manager
+                    mock_nm.get_notification_stats.return_value = {"sent": 5}
+                    
+                    # Mock HTML response
+                    from fastapi.responses import HTMLResponse
+                    mock_html_response = HTMLResponse(
+                        content="<html><body>Dashboard</body></html>",
+                        status_code=200
+                    )
+                    mock_tpl.TemplateResponse.return_value = mock_html_response
+                    
+                    response = self.client.get("/")
+                    
+                    assert response.status_code == 200
+                    assert "Dashboard" in response.text
+                    mock_tracker.get_products.assert_called_once()
+                    mock_tracker.get_current_deals.assert_called_once()
+                    mock_nm.get_notification_stats.assert_called_once()
     
     def test_get_products_api(self):
         """Test GET /api/products endpoint"""

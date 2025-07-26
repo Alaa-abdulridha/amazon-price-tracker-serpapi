@@ -39,7 +39,10 @@ class PriceMonitor:
         )
         self.notification_manager = NotificationManager()
         self.is_running = False
-        self.executor = ThreadPoolExecutor(max_workers=settings.max_concurrent_checks)
+        self.max_concurrent_checks = settings.max_concurrent_checks
+        self.executor = ThreadPoolExecutor(
+            max_workers=self.max_concurrent_checks
+        )
         
         # Performance metrics
         self.metrics = {
