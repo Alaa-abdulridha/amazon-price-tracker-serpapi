@@ -25,7 +25,7 @@ class SerpApiRateLimitError(SerpApiError):
 
 class SerpApiClient:
     """
-    Client for interacting with SerpAPI Amazon Search API
+    Client for interacting with SerpApi Amazon Search API
     """
     
     BASE_URL = "https://serpapi.com/search.json"
@@ -38,10 +38,10 @@ class SerpApiClient:
         retry_delay: float = 1.0
     ):
         """
-        Initialize SerpAPI client
-        
+        Initialize SerpApi client
+
         Args:
-            api_key: SerpAPI key
+            api_key: SerpApi key
             timeout: Request timeout in seconds
             retries: Number of retry attempts
             retry_delay: Delay between retries in seconds
@@ -55,7 +55,7 @@ class SerpApiClient:
         self.last_request_time = 0
         self.min_request_interval = 1.0  # Minimum 1 second between requests
         
-        logger.info("SerpAPI client initialized")
+        logger.info("SerpApi client initialized")
     
     def search_amazon_products(
         self,
@@ -67,7 +67,7 @@ class SerpApiClient:
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Search for Amazon products using SerpAPI
+        Search for Amazon products using SerpApi
         
         Args:
             query: Search query for products
@@ -256,7 +256,7 @@ class SerpApiClient:
     
     def _make_request(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Make HTTP request to SerpAPI with rate limiting and retry logic
+        Make HTTP request to SerpApi with rate limiting and retry logic
         
         Args:
             params: Request parameters
@@ -281,7 +281,7 @@ class SerpApiClient:
         
         for attempt in range(self.retries + 1):
             try:
-                logger.debug(f"Making SerpAPI request (attempt {attempt + 1}): {params.get('k', 'N/A')}")
+                logger.debug(f"Making SerpApi request (attempt {attempt + 1}): {params.get('k', 'N/A')}")
                 
                 response = requests.get(
                     url,

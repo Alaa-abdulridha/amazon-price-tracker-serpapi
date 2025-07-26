@@ -5,9 +5,10 @@ Main interface for the Amazon Price Tracker application
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from ..database.models import Product, PriceHistory, PriceAlert
 from ..database.connection import get_db_session
@@ -359,12 +360,38 @@ class PriceTracker:
             List of prediction data
         """
         try:
-            predictions = self.prediction_engine.predict_prices(
-                product_id=product_id,
-                days_ahead=days_ahead
-            )
+            # Run the async prediction in a sync context
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If we're in an async context, create a new thread
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            asyncio.run,
+                            self.prediction_engine.predict_price(
+                                product_id=product_id,
+                                days_ahead=days_ahead
+                            )
+                        )
+                        prediction = future.result()
+                else:
+                    prediction = loop.run_until_complete(
+                        self.prediction_engine.predict_price(
+                            product_id=product_id,
+                            days_ahead=days_ahead
+                        )
+                    )
+            except RuntimeError:
+                prediction = asyncio.run(
+                    self.prediction_engine.predict_price(
+                        product_id=product_id,
+                        days_ahead=days_ahead
+                    )
+                )
             
-            return predictions
+            return [prediction] if prediction else []
             
         except Exception as e:
             logger.error(f"Failed to get predictions for product {product_id}: {e}")
@@ -386,10 +413,36 @@ class PriceTracker:
             True if successful, False otherwise
         """
         try:
-            return self.notification_manager.send_test_notification(
-                notification_type=notification_type,
-                recipient=recipient
-            )
+            # Run the async notification in a sync context
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If we're in an async context, create a new thread
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            asyncio.run,
+                            self.notification_manager.send_test_notification(
+                                notification_type=notification_type,
+                                recipient=recipient
+                            )
+                        )
+                        return future.result()
+                else:
+                    return loop.run_until_complete(
+                        self.notification_manager.send_test_notification(
+                            notification_type=notification_type,
+                            recipient=recipient
+                        )
+                    )
+            except RuntimeError:
+                return asyncio.run(
+                    self.notification_manager.send_test_notification(
+                        notification_type=notification_type,
+                        recipient=recipient
+                    )
+                )
         except Exception as e:
             logger.error(f"Failed to send test notification: {e}")
             return False

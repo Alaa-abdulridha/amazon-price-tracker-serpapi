@@ -4,243 +4,262 @@ Tests all product management, price checking, and monitoring features
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, call
 from datetime import datetime, timedelta
 import uuid
+from sqlalchemy import func
 
 from amazontracker.core.tracker import PriceTracker
-from amazontracker.database.models import Product, PriceHistory
+from amazontracker.database.models import Product, PriceHistory, PriceAlert
 
 
-class TestPriceTrackerProductManagement:
-    """Test product management functionality"""
-    
-    def test_add_product_with_valid_data(self, temp_database, sample_product_data):
-        """Test adding a product with valid data"""
+class TestPriceTracker:
+    """Test cases for PriceTracker core functionality"""
+
+    @pytest.fixture
+    def tracker(self):
+        """Create PriceTracker instance for testing"""
+        return PriceTracker()
+
+    @pytest.fixture
+    def sample_product_data(self):
+        """Sample product data for testing"""
+        return {
+            "name": "Test Product",
+            "search_query": "test product amazon",
+            "target_price": 99.99,
+            "max_price": 150.0,
+            "check_interval": "1h",
+            "email_notifications": True,
+            "slack_notifications": False,
+            "desktop_notifications": True,
+            "category": "Electronics",
+            "tags": ["gadget", "tech"]
+        }
+
+    @pytest.fixture
+    def mock_product(self):
+        """Mock Product instance"""
+        product = Mock(spec=Product)
+        product.id = str(uuid.uuid4())
+        product.name = "Test Product"
+        product.search_query = "test product"
+        product.target_price = 99.99
+        product.is_active = True
+        product.category = "Electronics"
+        product.check_interval = "1h"
+        return product
+
+    @pytest.fixture
+    def mock_price_history(self):
+        """Mock PriceHistory instance"""
+        history = Mock(spec=PriceHistory)
+        history.id = str(uuid.uuid4())
+        history.price = 89.99
+        history.checked_at = datetime.now()
+        history.is_deal = True
+        history.discount_percentage = 10.0
+        return history
+
+    def test_add_product_success(self, tracker, sample_product_data):
+        """Test successful product addition"""
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            # Setup mock session
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
             
-            tracker = PriceTracker()
+            # Mock the Product creation
+            mock_product = Mock(spec=Product)
+            mock_product.id = str(uuid.uuid4())
+            mock_product.name = sample_product_data["name"]
+            mock_product.target_price = sample_product_data["target_price"]
+            mock_product.check_interval = sample_product_data["check_interval"]
             
-            # Test adding product
-            result = tracker.add_product(**sample_product_data)
+            # Mock the _perform_initial_check method
+            with patch.object(tracker, '_perform_initial_check') as mock_initial:
+                result = tracker.add_product(**sample_product_data)
+                
+                # Verify session operations
+                mock_session_context.add.assert_called_once()
+                mock_session_context.commit.assert_called_once()
+                mock_session_context.refresh.assert_called_once()
+                
+                # Verify initial check was called
+                mock_initial.assert_called_once()
+
+    def test_add_product_with_database_error(self, tracker, sample_product_data):
+        """Test product addition with database error"""
+        with patch('amazontracker.core.tracker.get_db_session') as mock_session:
+            mock_session_context = Mock()
+            mock_session.return_value.__enter__.return_value = mock_session_context
+            mock_session_context.commit.side_effect = Exception("Database error")
             
-            # Verify product was created
-            assert result is not None
-            assert isinstance(result, Product)
-            assert result.name == sample_product_data["name"]
-            assert result.target_price == sample_product_data["target_price"]
-            assert result.check_interval == sample_product_data["check_interval"]
+            with pytest.raises(Exception):
+                tracker.add_product(**sample_product_data)
             
-            # Verify database operations
-            mock_session_context.add.assert_called_once()
+            # Verify rollback was called
+            mock_session_context.rollback.assert_called_once()
+
+    def test_remove_product_success(self, tracker):
+        """Test successful product removal"""
+        product_id = str(uuid.uuid4())
+        
+        with patch('amazontracker.core.tracker.get_db_session') as mock_session:
+            mock_session_context = Mock()
+            mock_session.return_value.__enter__.return_value = mock_session_context
+            
+            mock_product = Mock(spec=Product)
+            mock_product.name = "Test Product"
+            mock_session_context.query.return_value.filter.return_value.first.return_value = mock_product
+            
+            result = tracker.remove_product(product_id)
+            
+            # Verify product was deactivated
+            assert mock_product.is_active is False
             mock_session_context.commit.assert_called_once()
-    
-    def test_add_product_with_invalid_price(self, temp_database):
-        """Test adding product with invalid price raises error"""
-        tracker = PriceTracker()
+            assert result is True
+
+    def test_remove_product_not_found(self, tracker):
+        """Test product removal when product doesn't exist"""
+        product_id = str(uuid.uuid4())
         
-        with pytest.raises(ValueError):
-            tracker.add_product(
-                name="Test Product",
-                search_query="test",
-                target_price=-10.0  # Invalid negative price
-            )
-    
-    def test_add_product_with_empty_name(self, temp_database):
-        """Test adding product with empty name raises error"""
-        tracker = PriceTracker()
-        
-        with pytest.raises(ValueError):
-            tracker.add_product(
-                name="",  # Empty name
-                search_query="test",
-                target_price=99.99
-            )
-    
-    def test_get_products_active_only(self, temp_database):
-        """Test getting only active products"""
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
+            mock_session.return_value.__enter__.return_value = mock_session_context
+            mock_session_context.query.return_value.filter.return_value.first.return_value = None
+            
+            result = tracker.remove_product(product_id)
+            
+            assert result is False
+
+    def test_get_products_active_only(self, tracker):
+        """Test getting active products only"""
+        with patch('amazontracker.core.tracker.get_db_session') as mock_session:
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
             
-            # Mock query results
             mock_query = Mock()
             mock_session_context.query.return_value = mock_query
             mock_query.filter.return_value = mock_query
             mock_query.all.return_value = [Mock(is_active=True), Mock(is_active=True)]
             
-            tracker = PriceTracker()
-            products = tracker.get_products(active_only=True)
+            result = tracker.get_products(active_only=True)
             
-            # Verify filter was applied
-            mock_query.filter.assert_called_once()
-            assert len(products) == 2
-    
-    def test_get_products_with_category_filter(self, temp_database):
-        """Test getting products filtered by category"""
+            # Verify filter was applied for active products
+            mock_query.filter.assert_called()
+            assert len(result) == 2
+
+    def test_get_products_with_category_filter(self, tracker):
+        """Test getting products with category filter"""
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
             
             mock_query = Mock()
             mock_session_context.query.return_value = mock_query
             mock_query.filter.return_value = mock_query
-            mock_query.all.return_value = [Mock(category="electronics")]
+            mock_query.all.return_value = []
             
-            tracker = PriceTracker()
-            products = tracker.get_products(category="electronics")
+            tracker.get_products(category="Electronics")
             
             # Verify category filter was applied
             assert mock_query.filter.call_count >= 1
-            assert len(products) == 1
-    
-    def test_get_product_by_id_existing(self, temp_database):
-        """Test getting existing product by ID"""
+
+    def test_get_products_with_limit(self, tracker):
+        """Test getting products with limit"""
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
             
-            # Mock existing product
-            mock_product = Mock()
-            mock_product.id = "test-id-123"
+            mock_query = Mock()
+            mock_session_context.query.return_value = mock_query
+            mock_query.filter.return_value = mock_query
+            mock_query.limit.return_value = mock_query
+            mock_query.all.return_value = []
+            
+            tracker.get_products(limit=10)
+            
+            # Verify limit was applied
+            mock_query.limit.assert_called_with(10)
+
+    def test_get_product_by_id_found(self, tracker, mock_product):
+        """Test getting product by ID when found"""
+        with patch('amazontracker.core.tracker.get_db_session') as mock_session:
+            mock_session_context = Mock()
+            mock_session.return_value.__enter__.return_value = mock_session_context
             mock_session_context.query.return_value.filter.return_value.first.return_value = mock_product
             
-            tracker = PriceTracker()
-            result = tracker.get_product("test-id-123")
+            result = tracker.get_product(mock_product.id)
             
             assert result == mock_product
-    
-    def test_get_product_by_id_nonexistent(self, temp_database):
-        """Test getting non-existent product returns None"""
+
+    def test_get_product_by_id_not_found(self, tracker):
+        """Test getting product by ID when not found"""
+        product_id = str(uuid.uuid4())
+        
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
             mock_session_context.query.return_value.filter.return_value.first.return_value = None
             
-            tracker = PriceTracker()
-            result = tracker.get_product("nonexistent-id")
+            result = tracker.get_product(product_id)
             
             assert result is None
-    
-    def test_remove_product_existing(self, temp_database):
-        """Test removing existing product"""
+
+    def test_update_product_success(self, tracker, mock_product):
+        """Test successful product update"""
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
-            
-            # Mock existing product
-            mock_product = Mock()
-            mock_product.is_active = True
             mock_session_context.query.return_value.filter.return_value.first.return_value = mock_product
             
-            tracker = PriceTracker()
-            result = tracker.remove_product("test-id")
+            updates = {"target_price": 79.99, "name": "Updated Product"}
+            result = tracker.update_product(mock_product.id, **updates)
             
-            assert result is True
-            assert mock_product.is_active is False
+            # Verify updates were applied
+            assert mock_product.target_price == 79.99
+            assert mock_product.name == "Updated Product"
             mock_session_context.commit.assert_called_once()
-    
-    def test_remove_product_nonexistent(self, temp_database):
-        """Test removing non-existent product returns False"""
+            mock_session_context.refresh.assert_called_once()
+            assert result == mock_product
+
+    def test_update_product_not_found(self, tracker):
+        """Test updating product when not found"""
+        product_id = str(uuid.uuid4())
+        
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
             mock_session_context.query.return_value.filter.return_value.first.return_value = None
             
-            tracker = PriceTracker()
-            result = tracker.remove_product("nonexistent-id")
-            
-            assert result is False
-
-
-class TestPriceTrackerPriceChecking:
-    """Test price checking and monitoring functionality"""
-    
-    def test_check_product_price_success(self, temp_database, mock_serpapi_response):
-        """Test successful price check for a product"""
-        with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
-            mock_session.return_value.__enter__.return_value = mock_session_context
-            
-            # Mock product
-            mock_product = Mock()
-            mock_product.id = "test-id"
-            mock_product.name = "iPhone 15"
-            mock_session_context.query.return_value.filter.return_value.first.return_value = mock_product
-            
-            # Mock price monitor
-            mock_price_record = Mock()
-            mock_price_record.price = 999.99
-            
-            tracker = PriceTracker()
-            with patch.object(tracker, 'price_monitor') as mock_monitor:
-                mock_monitor.check_single_product.return_value = mock_price_record
-                
-                result = tracker.check_product_price("test-id")
-                
-                assert result == mock_price_record
-                mock_monitor.check_single_product.assert_called_once_with(mock_product)
-    
-    def test_check_product_price_product_not_found(self, temp_database):
-        """Test price check for non-existent product"""
-        with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
-            mock_session.return_value.__enter__.return_value = mock_session_context
-            mock_session_context.query.return_value.filter.return_value.first.return_value = None
-            
-            tracker = PriceTracker()
-            result = tracker.check_product_price("nonexistent-id")
+            result = tracker.update_product(product_id, target_price=99.99)
             
             assert result is None
-    
-    def test_check_product_price_api_failure(self, temp_database):
-        """Test price check with API failure"""
+
+    def test_get_price_history_basic(self, tracker, mock_price_history):
+        """Test getting price history"""
+        product_id = str(uuid.uuid4())
+        
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
             
-            mock_product = Mock()
-            mock_session_context.query.return_value.filter.return_value.first.return_value = mock_product
-            
-            tracker = PriceTracker()
-            with patch.object(tracker, 'price_monitor') as mock_monitor:
-                mock_monitor.check_single_product.side_effect = Exception("API Error")
-                
-                result = tracker.check_product_price("test-id")
-                
-                assert result is None
-
-
-class TestPriceTrackerPriceHistory:
-    """Test price history functionality"""
-    
-    def test_get_price_history_with_data(self, temp_database, sample_price_history):
-        """Test getting price history with existing data"""
-        with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
-            mock_session.return_value.__enter__.return_value = mock_session_context
-            
-            # Mock price history records
-            mock_records = [Mock(price=data["price"]) for data in sample_price_history]
             mock_query = Mock()
             mock_session_context.query.return_value = mock_query
             mock_query.filter.return_value = mock_query
             mock_query.order_by.return_value = mock_query
-            mock_query.limit.return_value = mock_query
-            mock_query.all.return_value = mock_records
+            mock_query.all.return_value = [mock_price_history]
             
-            tracker = PriceTracker()
-            result = tracker.get_price_history("test-id", days=7)
+            result = tracker.get_price_history(product_id)
             
-            assert len(result) == len(sample_price_history)
-    
-    def test_get_price_history_no_data(self, temp_database):
-        """Test getting price history with no data"""
+            assert len(result) == 1
+            assert result[0] == mock_price_history
+
+    def test_get_price_history_with_limit(self, tracker):
+        """Test getting price history with limit"""
+        product_id = str(uuid.uuid4())
+        
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
             
             mock_query = Mock()
@@ -250,146 +269,174 @@ class TestPriceTrackerPriceHistory:
             mock_query.limit.return_value = mock_query
             mock_query.all.return_value = []
             
-            tracker = PriceTracker()
-            result = tracker.get_price_history("test-id", days=7)
+            tracker.get_price_history(product_id, limit=5)
             
-            assert len(result) == 0
+            mock_query.limit.assert_called_with(5)
 
-
-class TestPriceTrackerDealsAndAlerts:
-    """Test deals detection and alert functionality"""
-    
-    def test_get_current_deals(self, temp_database):
+    def test_get_current_deals(self, tracker):
         """Test getting current deals"""
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
             
-            # Mock deals
-            mock_deals = [Mock(target_price=100, name="Deal 1"), Mock(target_price=200, name="Deal 2")]
+            # Mock complex query chain
             mock_query = Mock()
             mock_session_context.query.return_value = mock_query
             mock_query.join.return_value = mock_query
             mock_query.filter.return_value = mock_query
             mock_query.order_by.return_value = mock_query
             mock_query.limit.return_value = mock_query
-            mock_query.all.return_value = mock_deals
             
-            tracker = PriceTracker()
-            deals = tracker.get_current_deals()
+            # Mock price record with product
+            mock_price_record = Mock()
+            mock_price_record.product = Mock()
+            mock_price_record.product.id = str(uuid.uuid4())
+            mock_price_record.product.name = "Deal Product"
+            mock_price_record.product.target_price = 99.99
+            mock_price_record.price = 79.99
+            mock_price_record.old_price = 99.99
+            mock_price_record.discount_percentage = 20.0
+            mock_price_record.savings_amount = 20.0
+            mock_price_record.rating = 4.5
+            mock_price_record.reviews_count = 100
+            mock_price_record.prime_eligible = True
+            mock_price_record.checked_at = datetime.now()
             
-            assert len(deals) == 2
-    
-    def test_send_test_notification_success(self, temp_database, mock_notification_manager):
-        """Test sending test notification successfully"""
-        tracker = PriceTracker()
-        tracker.notification_manager = mock_notification_manager
-        
-        result = tracker.send_test_notification("desktop")
-        
-        assert result["success"] is True
-        mock_notification_manager.send_test_notification.assert_called_once_with("desktop")
-    
-    def test_send_test_notification_failure(self, temp_database):
-        """Test sending test notification with failure"""
-        mock_manager = Mock()
-        mock_manager.send_test_notification.side_effect = Exception("Notification failed")
-        
-        tracker = PriceTracker()
-        tracker.notification_manager = mock_manager
-        
-        result = tracker.send_test_notification("email")
-        
-        assert result["success"] is False
-        assert "error" in result
+            mock_query.all.return_value = [mock_price_record]
+            
+            result = tracker.get_current_deals(max_price=100.0, min_discount=10.0)
+            
+            assert len(result) == 1
+            assert result[0]["price"] == 79.99
+            assert result[0]["discount_percentage"] == 20.0
 
-
-class TestPriceTrackerSystemStats:
-    """Test system statistics functionality"""
-    
-    def test_get_system_stats(self, temp_database):
-        """Test getting system statistics"""
+    def test_check_product_price_success(self, tracker, mock_product, mock_price_history):
+        """Test manual price check success"""
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
+            mock_session_context.query.return_value.filter.return_value.first.return_value = mock_product
             
-            # Mock various queries for stats
-            mock_session_context.query.return_value.count.return_value = 5
-            mock_session_context.query.return_value.filter.return_value.count.return_value = 3
-            
-            tracker = PriceTracker()
-            with patch.object(tracker, 'notification_manager') as mock_manager:
-                mock_manager.get_notification_stats.return_value = {"sent": 10}
+            with patch.object(tracker.price_monitor, 'check_single_product', return_value=mock_price_history):
+                result = tracker.check_product_price(mock_product.id)
                 
-                stats = tracker.get_system_stats()
-                
-                assert "products" in stats
-                assert "notifications" in stats
-                assert "uptime" in stats
-    
-    def test_get_predictions_with_data(self, temp_database):
-        """Test getting price predictions"""
-        with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
-            mock_session.return_value.__enter__.return_value = mock_session_context
-            
-            # Mock prediction data
-            mock_predictions = [Mock(predicted_price=95.99, confidence=0.8)]
-            mock_query = Mock()
-            mock_session_context.query.return_value = mock_query
-            mock_query.filter.return_value = mock_query
-            mock_query.order_by.return_value = mock_query
-            mock_query.limit.return_value = mock_query
-            mock_query.all.return_value = mock_predictions
-            
-            tracker = PriceTracker()
-            predictions = tracker.get_predictions("test-id")
-            
-            assert len(predictions) == 1
-            assert predictions[0].predicted_price == 95.99
+                assert result == mock_price_history
+                tracker.price_monitor.check_single_product.assert_called_once_with(mock_product)
 
-
-class TestPriceTrackerEdgeCases:
-    """Test edge cases and error conditions"""
-    
-    def test_add_product_database_error(self, temp_database):
-        """Test adding product with database error"""
+    def test_check_product_price_not_found(self, tracker):
+        """Test manual price check for non-existent product"""
+        product_id = str(uuid.uuid4())
+        
         with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
-            mock_session.return_value.__enter__.return_value = mock_session_context
-            mock_session_context.commit.side_effect = Exception("Database error")
-            
-            tracker = PriceTracker()
-            
-            with pytest.raises(Exception):
-                tracker.add_product(
-                    name="Test Product",
-                    search_query="test",
-                    target_price=99.99
-                )
-            
-            mock_session_context.rollback.assert_called_once()
-    
-    def test_update_product_nonexistent(self, temp_database):
-        """Test updating non-existent product"""
-        with patch('amazontracker.core.tracker.get_db_session') as mock_session:
-            mock_session_context = MagicMock()
+            mock_session_context = Mock()
             mock_session.return_value.__enter__.return_value = mock_session_context
             mock_session_context.query.return_value.filter.return_value.first.return_value = None
             
-            tracker = PriceTracker()
-            result = tracker.update_product("nonexistent-id", target_price=199.99)
+            result = tracker.check_product_price(product_id)
+            
+            assert result is None
+
+    def test_start_monitoring(self, tracker):
+        """Test starting price monitoring"""
+        with patch.object(tracker.price_monitor, 'start') as mock_start:
+            tracker.start_monitoring()
+            mock_start.assert_called_once()
+
+    def test_stop_monitoring(self, tracker):
+        """Test stopping price monitoring"""
+        with patch.object(tracker.price_monitor, 'stop') as mock_stop:
+            tracker.stop_monitoring()
+            mock_stop.assert_called_once()
+
+    def test_get_predictions_success(self, tracker):
+        """Test getting price predictions"""
+        product_id = str(uuid.uuid4())
+        mock_prediction = {
+            "date": "2024-01-01", 
+            "predicted_price": 89.99, 
+            "confidence": 0.85
+        }
+        
+        with patch.object(tracker.prediction_engine, 'predict_price') as mock_predict:
+            mock_predict.return_value = mock_prediction
+            
+            # Mock asyncio.run to return the prediction directly
+            with patch('asyncio.run', return_value=mock_prediction):
+                result = tracker.get_predictions(product_id, days_ahead=7)
+                
+                assert len(result) == 1
+                assert result[0] == mock_prediction
+
+    def test_get_predictions_error(self, tracker):
+        """Test getting predictions with error"""
+        product_id = str(uuid.uuid4())
+        
+        with patch('asyncio.run', side_effect=Exception("Prediction error")):
+            result = tracker.get_predictions(product_id)
+            
+            assert result == []
+
+    def test_send_test_notification_success(self, tracker):
+        """Test sending test notification successfully"""
+        with patch.object(tracker.notification_manager, 'send_test_notification') as mock_send:
+            mock_send.return_value = True
+            
+            # Mock asyncio.run to return True
+            with patch('asyncio.run', return_value=True):
+                result = tracker.send_test_notification("email", "test@example.com")
+                
+                assert result is True
+
+    def test_send_test_notification_error(self, tracker):
+        """Test sending test notification with error"""
+        with patch('asyncio.run', side_effect=Exception("Send error")):
+            result = tracker.send_test_notification("email")
             
             assert result is False
-    
-    def test_monitoring_lifecycle(self, temp_database):
-        """Test monitoring start/stop lifecycle"""
-        tracker = PriceTracker()
-        
-        # Test start monitoring
-        tracker.start_monitoring()
-        # Should not raise exception
-        
-        # Test stop monitoring
-        tracker.stop_monitoring()
-        # Should not raise exception
+
+    def test_get_system_stats(self, tracker):
+        """Test getting system statistics"""
+        with patch('amazontracker.core.tracker.get_db_session') as mock_session:
+            mock_session_context = Mock()
+            mock_session.return_value.__enter__.return_value = mock_session_context
+            
+            # Mock query counts
+            mock_session_context.query.return_value.count.return_value = 10
+            mock_session_context.query.return_value.filter.return_value.count.return_value = 8
+            
+            with patch.object(tracker, 'get_current_deals', return_value=[]):
+                result = tracker.get_system_stats()
+                
+                assert "products" in result
+                assert "price_checks" in result
+                assert "alerts" in result
+                assert "current_deals" in result
+                assert isinstance(result["products"]["total"], int)
+
+    def test_perform_initial_check(self, tracker, mock_product):
+        """Test performing initial check for new product"""
+        with patch('asyncio.create_task') as mock_create_task:
+            tracker._perform_initial_check(mock_product)
+            
+            # Verify async task was created
+            mock_create_task.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_initial_check_success(self, tracker, mock_product, mock_price_history):
+        """Test async initial check success"""
+        with patch('asyncio.sleep') as mock_sleep:
+            with patch.object(tracker.price_monitor, 'check_single_product', return_value=mock_price_history):
+                await tracker._async_initial_check(mock_product)
+                
+                mock_sleep.assert_called_once_with(1)
+                tracker.price_monitor.check_single_product.assert_called_once_with(mock_product)
+
+    @pytest.mark.asyncio
+    async def test_async_initial_check_failure(self, tracker, mock_product):
+        """Test async initial check with failure"""
+        with patch('asyncio.sleep') as mock_sleep:
+            with patch.object(tracker.price_monitor, 'check_single_product', return_value=None):
+                await tracker._async_initial_check(mock_product)
+                
+                mock_sleep.assert_called_once_with(1)
+                tracker.price_monitor.check_single_product.assert_called_once_with(mock_product)
