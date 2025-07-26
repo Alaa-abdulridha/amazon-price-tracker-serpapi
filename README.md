@@ -1,4 +1,7 @@
-# Amazon Price Tracker with SerpApi 🛍️
+# Am![Python](https://img.shields.io/badge/python-v3.9+-blue.svg)
+![SerpApi](https://img.shields.io/badge/SerpApi-powered-green.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-modern-red.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)Tracker with SerpApi 🛍️
 
 A powerful, intelligent Amazon price tracking application that monitors product prices, analyzes trends, and sends smart notifications when great deals are found. Built with SerpApi for reliable product data and enhanced with AI-powered insights.
 

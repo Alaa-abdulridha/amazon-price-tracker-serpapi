@@ -16,7 +16,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from ..database.models import Product, PriceHistory, PriceAlert
 from ..database.connection import get_db_session
-from ..services.serpapi_client import SerpAPIClient, SerpAPIError
+from ..services.serpapi_client import SerpApiClient, SerpApiError
 from ..notifications.manager import NotificationManager
 from ..utils.config import settings, get_interval_seconds
 
@@ -31,7 +31,7 @@ class PriceMonitor:
     def __init__(self):
         """Initialize the price monitor"""
         self.scheduler = AsyncIOScheduler()
-        self.serpapi_client = SerpAPIClient(
+        self.serpapi_client = SerpApiClient(
             api_key=settings.serpapi_key,
             timeout=settings.serpapi_timeout,
             retries=settings.serpapi_retries,
@@ -313,7 +313,7 @@ class PriceMonitor:
                 logger.info(f"Price check completed for {product.name}: ${current_price}")
                 return price_record
                 
-        except SerpAPIError as e:
+        except SerpApiError as e:
             logger.error(f"SerpAPI error checking {product.name}: {e}")
             return None
         except Exception as e:

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..database.models import Product, PriceHistory, PriceAlert
 from ..database.connection import get_db_session
-from ..services.serpapi_client import SerpAPIClient
+from ..services.serpapi_client import SerpApiClient
 from ..services.price_monitor import PriceMonitor
 from ..ai.prediction import PricePredictionEngine
 from ..notifications.manager import NotificationManager
@@ -27,7 +27,7 @@ class PriceTracker:
     
     def __init__(self):
         """Initialize the Price Tracker with all necessary services"""
-        self.serpapi_client = SerpAPIClient(settings.serpapi_key)
+        self.serpapi_client = SerpApiClient(settings.serpapi_key)
         self.price_monitor = PriceMonitor()
         self.prediction_engine = PricePredictionEngine()
         self.notification_manager = NotificationManager()

@@ -13,7 +13,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings with validation and type checking"""
     
-    # SerpAPI Configuration
+    # SerpApi Configuration
     serpapi_key: str
     serpapi_timeout: int = 30
     serpapi_retries: int = 3
@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     requests_per_minute: int = Field(
         default=20,
         ge=1,
-        description="Maximum requests per minute for SerpAPI"
+        description="Maximum requests per minute for SerpApi"
     )
     
     # Monitoring intervals
@@ -131,7 +131,7 @@ class Settings(BaseSettings):
     @validator("serpapi_key")
     def validate_serpapi_key(cls, v):
         if not v or len(v) < 10:
-            raise ValueError("Valid SerpAPI key is required")
+            raise ValueError("Valid SerpApi key is required")
         return v
     
     @validator("secret_key")

@@ -1,5 +1,5 @@
 """
-Comprehensive tests for SerpAPI client functionality
+Comprehensive tests for SerpApi client functionality
 Tests all API interactions, search operations, and data parsing
 """
 
@@ -7,16 +7,16 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import requests
 
-from amazontracker.services.serpapi_client import SerpAPIClient
+from amazontracker.services.serpapi_client import SerpApiClient
 
 
-class TestSerpAPIClientInitialization:
-    """Test SerpAPI client initialization and configuration"""
+class TestSerpApiClientInitialization:
+    """Test SerpApi client initialization and configuration"""
     
     def test_client_initialization_with_valid_key(self, test_settings):
         """Test client initializes correctly with valid API key"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             assert client.api_key == test_settings.serpapi_key
             assert client.timeout == test_settings.serpapi_timeout
@@ -28,12 +28,12 @@ class TestSerpAPIClientInitialization:
             mock_settings.serpapi_key = ""
             
             with pytest.raises(ValueError, match="SerpAPI key is required"):
-                SerpAPIClient()
+                SerpApiClient()
     
     def test_client_default_parameters(self, test_settings):
         """Test client sets correct default parameters"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             expected_params = {
                 "engine": "google_shopping",
@@ -47,13 +47,13 @@ class TestSerpAPIClientInitialization:
                 assert client.default_params[key] == value
 
 
-class TestSerpAPIClientSearchOperations:
+class TestSerpApiClientSearchOperations:
     """Test search operations and API calls"""
     
     def test_search_products_success(self, test_settings, mock_serpapi_response):
         """Test successful product search"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             with patch('requests.get') as mock_get:
                 mock_response = Mock()
@@ -76,7 +76,7 @@ class TestSerpAPIClientSearchOperations:
     def test_search_products_by_asin_success(self, test_settings, mock_serpapi_response):
         """Test successful product search by ASIN"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             with patch('requests.get') as mock_get:
                 mock_response = Mock()
@@ -94,7 +94,7 @@ class TestSerpAPIClientSearchOperations:
     def test_search_products_api_error(self, test_settings):
         """Test handling of API errors"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             with patch('requests.get') as mock_get:
                 mock_response = Mock()
@@ -109,7 +109,7 @@ class TestSerpAPIClientSearchOperations:
     def test_search_products_network_timeout(self, test_settings):
         """Test handling of network timeouts"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             with patch('requests.get') as mock_get:
                 mock_get.side_effect = requests.Timeout("Request timed out")
@@ -121,7 +121,7 @@ class TestSerpAPIClientSearchOperations:
     def test_search_products_connection_error(self, test_settings):
         """Test handling of connection errors"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             with patch('requests.get') as mock_get:
                 mock_get.side_effect = requests.ConnectionError("Connection failed")
@@ -133,7 +133,7 @@ class TestSerpAPIClientSearchOperations:
     def test_search_products_with_retry_logic(self, test_settings):
         """Test retry logic on transient failures"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             client.retries = 3
             
             with patch('requests.get') as mock_get:
@@ -150,13 +150,13 @@ class TestSerpAPIClientSearchOperations:
                 assert results == []
 
 
-class TestSerpAPIClientDataParsing:
+class TestSerpApiClientDataParsing:
     """Test data parsing and extraction functionality"""
     
     def test_parse_price_valid_formats(self, test_settings):
         """Test parsing various price formats"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             # Test different price formats
             test_cases = [
@@ -176,7 +176,7 @@ class TestSerpAPIClientDataParsing:
     def test_parse_price_invalid_formats(self, test_settings):
         """Test parsing invalid price formats returns None"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             invalid_prices = [
                 "Free shipping",
@@ -194,7 +194,7 @@ class TestSerpAPIClientDataParsing:
     def test_extract_product_data_complete(self, test_settings):
         """Test extracting complete product data"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             raw_product = {
                 "title": "iPhone 15 Pro Max 256GB - Natural Titanium",
@@ -221,7 +221,7 @@ class TestSerpAPIClientDataParsing:
     def test_extract_product_data_minimal(self, test_settings):
         """Test extracting minimal product data"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             raw_product = {
                 "title": "Basic Product",
@@ -239,7 +239,7 @@ class TestSerpAPIClientDataParsing:
     def test_find_best_price_match_exact(self, test_settings, mock_serpapi_response):
         """Test finding best price match with exact query"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             products = [client.extract_product_data(p) for p in mock_serpapi_response["shopping_results"]]
             
@@ -252,7 +252,7 @@ class TestSerpAPIClientDataParsing:
     def test_find_best_price_match_partial(self, test_settings, mock_serpapi_response):
         """Test finding best price match with partial query"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             products = [client.extract_product_data(p) for p in mock_serpapi_response["shopping_results"]]
             
@@ -264,7 +264,7 @@ class TestSerpAPIClientDataParsing:
     def test_find_best_price_match_no_match(self, test_settings, mock_serpapi_response):
         """Test finding best price match with no match"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             products = [client.extract_product_data(p) for p in mock_serpapi_response["shopping_results"]]
             
@@ -273,13 +273,13 @@ class TestSerpAPIClientDataParsing:
             assert best_match is None
 
 
-class TestSerpAPIClientFiltering:
+class TestSerpApiClientFiltering:
     """Test filtering and sorting functionality"""
     
     def test_filter_by_price_range(self, test_settings, mock_serpapi_response):
         """Test filtering products by price range"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             products = [client.extract_product_data(p) for p in mock_serpapi_response["shopping_results"]]
             
@@ -291,7 +291,7 @@ class TestSerpAPIClientFiltering:
     def test_filter_by_rating(self, test_settings, mock_serpapi_response):
         """Test filtering products by minimum rating"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             products = [client.extract_product_data(p) for p in mock_serpapi_response["shopping_results"]]
             
@@ -303,7 +303,7 @@ class TestSerpAPIClientFiltering:
     def test_sort_by_price_ascending(self, test_settings, mock_serpapi_response):
         """Test sorting products by price (ascending)"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             products = [client.extract_product_data(p) for p in mock_serpapi_response["shopping_results"]]
             
@@ -316,7 +316,7 @@ class TestSerpAPIClientFiltering:
     def test_sort_by_price_descending(self, test_settings, mock_serpapi_response):
         """Test sorting products by price (descending)"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             products = [client.extract_product_data(p) for p in mock_serpapi_response["shopping_results"]]
             
@@ -329,7 +329,7 @@ class TestSerpAPIClientFiltering:
     def test_sort_by_rating(self, test_settings, mock_serpapi_response):
         """Test sorting products by rating"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             products = [client.extract_product_data(p) for p in mock_serpapi_response["shopping_results"]]
             
@@ -340,13 +340,13 @@ class TestSerpAPIClientFiltering:
             assert sorted_products[1]["rating"] == 4.5
 
 
-class TestSerpAPIClientRateLimiting:
+class TestSerpApiClientRateLimiting:
     """Test rate limiting and API usage tracking"""
     
     def test_rate_limiting_enforcement(self, test_settings):
         """Test rate limiting prevents excessive API calls"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             client.requests_per_minute = 2  # Very low limit for testing
             
             with patch('requests.get') as mock_get:
@@ -367,7 +367,7 @@ class TestSerpAPIClientRateLimiting:
     def test_api_usage_tracking(self, test_settings):
         """Test API usage is tracked correctly"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             with patch('requests.get') as mock_get:
                 mock_response = Mock()
@@ -386,7 +386,7 @@ class TestSerpAPIClientRateLimiting:
     def test_quota_exceeded_handling(self, test_settings):
         """Test handling when API quota is exceeded"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             
             with patch('requests.get') as mock_get:
                 mock_response = Mock()
@@ -400,13 +400,13 @@ class TestSerpAPIClientRateLimiting:
                 # Should log quota exceeded error
 
 
-class TestSerpAPIClientCaching:
+class TestSerpApiClientCaching:
     """Test caching functionality"""
     
     def test_cache_hit_avoids_api_call(self, test_settings):
         """Test cache hit avoids making API call"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             client.enable_caching = True
             
             with patch('requests.get') as mock_get:
@@ -427,7 +427,7 @@ class TestSerpAPIClientCaching:
     def test_cache_expiry(self, test_settings):
         """Test cache expires after configured time"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             client.enable_caching = True
             client.cache_duration = 1  # 1 second for testing
             
@@ -451,7 +451,7 @@ class TestSerpAPIClientCaching:
     def test_cache_clear(self, test_settings):
         """Test cache can be cleared manually"""
         with patch('amazontracker.services.serpapi_client.settings', test_settings):
-            client = SerpAPIClient()
+            client = SerpApiClient()
             client.enable_caching = True
             
             # Add some data to cache

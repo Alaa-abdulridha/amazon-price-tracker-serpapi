@@ -1,6 +1,6 @@
 """
-SerpAPI Client for Amazon Price Tracking
-Handles all interactions with the SerpAPI service for Amazon product searches
+SerpApi Client for Amazon Price Tracking
+Handles all interactions with the SerpApi service for Amazon product searches
 """
 
 import time
@@ -13,17 +13,17 @@ import json
 logger = logging.getLogger(__name__)
 
 
-class SerpAPIError(Exception):
-    """Custom exception for SerpAPI related errors"""
+class SerpApiError(Exception):
+    """Custom exception for SerpApi related errors"""
     pass
 
 
-class SerpAPIRateLimitError(SerpAPIError):
+class SerpApiRateLimitError(SerpApiError):
     """Exception for rate limit errors"""
     pass
 
 
-class SerpAPIClient:
+class SerpApiClient:
     """
     Client for interacting with SerpAPI Amazon Search API
     """
@@ -81,8 +81,8 @@ class SerpAPIClient:
             Dict containing search results and metadata
             
         Raises:
-            SerpAPIError: If API request fails
-            SerpAPIRateLimitError: If rate limit is exceeded
+            SerpApiError: If API request fails
+            SerpApiRateLimitError: If rate limit is exceeded
         """
         params = {
             "engine": "amazon",
@@ -106,7 +106,7 @@ class SerpAPIClient:
             
         except Exception as e:
             logger.error(f"Failed to search Amazon products for query '{query}': {e}")
-            raise SerpAPIError(f"Amazon search failed: {e}")
+            raise SerpApiError(f"Amazon search failed: {e}")
     
     def get_product_by_asin(
         self,
@@ -265,8 +265,8 @@ class SerpAPIClient:
             API response data
             
         Raises:
-            SerpAPIError: If request fails after retries
-            SerpAPIRateLimitError: If rate limited
+            SerpApiError: If request fails after retries
+            SerpApiRateLimitError: If rate limited
         """
         # Rate limiting
         current_time = time.time()
@@ -298,7 +298,7 @@ class SerpAPIClient:
                 # Check response status
                 if response.status_code == 429:
                     logger.warning("Rate limit exceeded")
-                    raise SerpAPIRateLimitError("Rate limit exceeded")
+                    raise SerpApiRateLimitError("Rate limit exceeded")
                 
                 response.raise_for_status()
                 
@@ -309,7 +309,7 @@ class SerpAPIClient:
                 if 'error' in data:
                     error_msg = data['error']
                     logger.error(f"SerpAPI error: {error_msg}")
-                    raise SerpAPIError(f"API error: {error_msg}")
+                    raise SerpApiError(f"API error: {error_msg}")
                 
                 # Log usage information
                 search_metadata = data.get('search_metadata', {})
@@ -325,11 +325,11 @@ class SerpAPIClient:
                     logger.info(f"Retrying in {sleep_time} seconds...")
                     time.sleep(sleep_time)
                 else:
-                    raise SerpAPIError(f"Request failed after {self.retries + 1} attempts: {e}")
+                    raise SerpApiError(f"Request failed after {self.retries + 1} attempts: {e}")
             
             except Exception as e:
                 logger.error(f"Unexpected error during request: {e}")
-                raise SerpAPIError(f"Unexpected error: {e}")
+                raise SerpApiError(f"Unexpected error: {e}")
     
     def _process_search_results(
         self,

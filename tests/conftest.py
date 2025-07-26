@@ -87,12 +87,12 @@ def mock_notification_manager():
 def test_settings():
     """Test settings configuration"""
     return Settings(
-        serpapi_key="test_key_123",
+        serpapi_key="test_key_12345678901234567890123456789012",
         database_url="sqlite:///test.db",
         email_enabled=False,
         slack_enabled=False,
         desktop_notifications_enabled=True,
-        secret_key="test_secret_key",
+        secret_key="test_secret_key_for_testing_12345678901234567890123456",
         data_dir="test_data",
         debug=True
     )
